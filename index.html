@@ -146,7 +146,7 @@
                             <span class="magic-star" aria-hidden="true">
                                 <svg viewBox="0 0 512 512"><path d="M512 255.1c0 11.34-7.406 20.86-18.44 23.64l-171.3 42.78l-42.78 171.1C276.7 504.6 267.2 512 255.9 512s-20.84-7.406-23.62-18.44l-42.66-171.2L18.47 279.6C7.406 276.8 0 267.3 0 255.1c0-11.34 7.406-20.83 18.44-23.61l171.2-42.78l42.78-171.1C235.2 7.406 244.7 0 256 0s20.84 7.406 23.62 18.44l42.78 171.2l171.2 42.78C504.6 235.2 512 244.6 512 255.1z"></path></svg>
                             </span>
-                            <span class="magic-text" style="font-size: 1em; white-space: nowrap; font-family: 'Be Vietnam Pro', sans-serif; font-style: normal;">Nguyễn Trường Cương</span>
+                            <span class="magic-text" style="font-size: clamp(16px, 3.5vw, 28px); white-space: nowrap; font-family: 'Be Vietnam Pro', sans-serif; font-style: normal;">Nguyễn Trường Cương</span>
                         </span>
                     </h1>
                     <div class="hero-lead" style="margin-top: 15px; display: flex; justify-content: center;">
@@ -217,7 +217,6 @@
                             document.getElementById('lws-name').textContent = u.global_name || u.username || 'lycoris0512';
                             document.getElementById('lws-dot').style.background = statusColors[st] || '#80848e';
 
-                            // Custom status
                             var activities = data.activities || [];
                             var customAct = null;
                             var mainAct = null;
@@ -234,7 +233,6 @@
                                 customEl.textContent = '';
                             }
 
-                            // Main activity
                             var actDiv = document.getElementById('lws-activity');
                             var idleDiv = document.getElementById('lws-idle');
 
@@ -246,7 +244,6 @@
                                 document.getElementById('lws-act-detail').textContent = mainAct.details || '';
                                 document.getElementById('lws-act-state').textContent = mainAct.state || '';
 
-                                // Activity image
                                 var actImg = document.getElementById('lws-act-img');
                                 if (mainAct.assets && mainAct.assets.large_image) {
                                     var imgUrl = mainAct.assets.large_image;
@@ -266,29 +263,50 @@
                             }
                         }
 
-                        function connect() {
-                            var ws = new WebSocket('wss://api.lanyard.dev/socket');
-                            var heartbeatInterval;
-
-                            ws.onopen = function() {};
-                            ws.onmessage = function(e) {
-                                var msg = JSON.parse(e.data);
-                                if (msg.op === 1) {
-                                    heartbeatInterval = setInterval(function() { ws.send(JSON.stringify({op:3})); }, msg.d.heartbeat_interval);
-                                    ws.send(JSON.stringify({op:2, d:{subscribe_to_id: USER_ID}}));
-                                } else if (msg.op === 0) {
-                                    if (msg.t === 'INIT_STATE' || msg.t === 'PRESENCE_UPDATE') {
-                                        render(msg.d);
+                        // Thử REST API trước
+                        function fetchREST() {
+                            fetch('https://api.lanyard.rest/v1/users/' + USER_ID)
+                                .then(function(r) { return r.json(); })
+                                .then(function(json) {
+                                    if (json.success && json.data) {
+                                        render(json.data);
                                     }
-                                }
-                            };
-                            ws.onclose = function() {
-                                clearInterval(heartbeatInterval);
-                                setTimeout(connect, 3000);
-                            };
-                            ws.onerror = function() { ws.close(); };
+                                })
+                                .catch(function() {
+                                    document.getElementById('lws-name').textContent = 'lycoris0512';
+                                    document.getElementById('lws-idle').textContent = 'Không thể kết nối Lanyard';
+                                });
                         }
-                        connect();
+                        fetchREST(); // Lấy data ngay lập tức qua REST
+
+                        // WebSocket để cập nhật real-time
+                        function connect() {
+                            try {
+                                var ws = new WebSocket('wss://api.lanyard.rest/socket');
+                                var heartbeatInterval;
+
+                                ws.onopen = function() {};
+                                ws.onmessage = function(e) {
+                                    var msg = JSON.parse(e.data);
+                                    if (msg.op === 1) {
+                                        heartbeatInterval = setInterval(function() { ws.send(JSON.stringify({op:3})); }, msg.d.heartbeat_interval);
+                                        ws.send(JSON.stringify({op:2, d:{subscribe_to_id: USER_ID}}));
+                                    } else if (msg.op === 0) {
+                                        if (msg.t === 'INIT_STATE' || msg.t === 'PRESENCE_UPDATE') {
+                                            render(msg.d);
+                                        }
+                                    }
+                                };
+                                ws.onclose = function() {
+                                    clearInterval(heartbeatInterval);
+                                    setTimeout(connect, 5000);
+                                };
+                                ws.onerror = function() { ws.close(); };
+                            } catch(e) {
+                                setTimeout(connect, 5000);
+                            }
+                        }
+                        setTimeout(connect, 1000); // Khởi động WS sau 1 giây
                     })();
                     </script>
 
@@ -791,7 +809,8 @@
             };
             syncVolumeUi();
 
-            toggle?.addEventListener("click", () => {
+            toggle?.addEventListener("click", (e) => {
+                e.stopPropagation(); // Tránh xung đột với click document
                 hideConsent();
                 if (audio.paused) {
                     play().then(() => setIcon(true)).catch(() => setIcon(false));
@@ -827,32 +846,29 @@
                 play().catch(() => setIcon(false));
             });
 
-            window.HomeMusic = { play, pause: () => audio.pause(), setIcon };
-            // Thử autoplay, nếu bị chặn thì hiện consent popup ngay
-            let audioUnlocked = false;
-            const autoPlay = () => {
-                play().then(() => {
-                    audioUnlocked = true;
+            window.HomeMusic = { play, pause: function() { audio.pause(); }, setIcon };
+
+            // Khi trang load xong, thử autoplay
+            var startMusic = function() {
+                play().then(function() {
                     setIcon(true);
                     hideConsent();
-                }).catch(() => {
+                }).catch(function() {
+                    // Trình duyệt chặn autoplay - đợi user click bất kỳ đâu
                     setIcon(false);
-                    // Hiện popup consent ngay lập tức (không delay)
-                    consentHandled = false;
-                    consent?.classList.add('is-visible');
+                    var unlock = function() {
+                        play().then(function() { setIcon(true); }).catch(function() { setIcon(false); });
+                        document.removeEventListener('click', unlock);
+                        document.removeEventListener('touchstart', unlock);
+                    };
+                    document.addEventListener('click', unlock);
+                    document.addEventListener('touchstart', unlock);
                 });
             };
-            // Khi user bấm nút âm lượng toggle - cũng unlock audio
-            const origToggleClick = toggle?.onclick;
-            toggle?.addEventListener('click', () => {
-                if (!audioUnlocked && audio.paused) {
-                    audioUnlocked = true;
-                }
-            });
-            if (document.readyState === "complete") {
-                autoPlay();
+            if (document.readyState === 'complete') {
+                startMusic();
             } else {
-                window.addEventListener("load", autoPlay);
+                window.addEventListener('load', startMusic);
             }
         })();
     </script>
