@@ -62,6 +62,49 @@
         #games {
             scroll-margin-top: 128px;
         }
+
+        /* === FIX: Lock screen mobile height - không che time === */
+        .td-lock-screen {
+            height: 100dvh !important;
+        }
+        .td-lock-screen .medias {
+            height: 100dvh !important;
+        }
+
+        /* === FIX: Mobile performance optimization === */
+        @media (max-width: 768px) {
+            /* Giảm filter nặng trên video lock screen */
+            .td-lock-screen .medias {
+                filter: brightness(0.6) !important;
+                -webkit-filter: brightness(0.6) !important;
+            }
+            /* Tắt backdrop-filter nặng trên mobile */
+            .content-panel,
+            .skill-block,
+            .project-card,
+            .pay-card,
+            .signal-board,
+            .marquee-track {
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+            }
+            /* Giảm animation ambient grid */
+            .ambient-grid::before,
+            .ambient-grid::after {
+                animation-duration: 0.01ms !important;
+                display: none !important;
+            }
+            /* Tắt cursor spotlight trên mobile */
+            #cursor-spotlight {
+                display: none !important;
+            }
+            /* Giảm box-shadow nặng */
+            .content-panel,
+            .skill-block,
+            .project-card {
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+            }
+        }
     </style>
     <script>
         // Title changer disabled for performance optimization
@@ -165,7 +208,7 @@
                                 <!-- Avatar -->
                                 <div style="position: relative; width: 64px; height: 64px; flex-shrink: 0;">
                                     <img id="dw-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: #222;">
-                                    <img id="dw-deco" src="" style="position: absolute; top: -10%; left: -10%; width: 120%; height: 120%; display: none; z-index: 2; pointer-events: none;">
+                                    <img id="dw-deco" src="" style="position: absolute; top: 50%; left: 50%; width: 130%; height: 130%; transform: translate(-50%, -50%); display: none; z-index: 2; pointer-events: none;">
                                     <span id="dw-status" style="position: absolute; bottom: 0; right: 0; width: 16px; height: 16px; border-radius: 50%; background: #80848e; border: 3px solid #1b1c1e; z-index: 3;"></span>
                                 </div>
                                 <!-- Info -->
@@ -356,7 +399,7 @@
                         }
 
                         fetchData();
-                        setInterval(fetchData, 30000); // Update every 30 seconds
+                        setInterval(fetchData, 10000); // Update every 10 seconds
                     })();
                     </script>
 
@@ -380,7 +423,7 @@
                             <i class="ri-telegram-line"></i>
                             Telegram
                         </a>
-                        <a href="https://mail.google.com/mail/?view=cm&fs=1&to=nguyentruongcuong05122006@gmail.com" target="_blank" rel="noopener">
+                        <a href="mailto:nguyentruongcuong05122006@gmail.com">
                             <i class="ri-mail-line"></i>
                             Email
                         </a>
@@ -627,8 +670,8 @@
                         <div class="bank-info">
                             <span>MBBank</span>
                             <strong>Nguyễn Trường Cương</strong>
-                            <button type="button" data-ws-copy="005122006">
-                                005122006
+                            <button type="button" data-ws-copy="0965384106">
+                                0965384106
                                 <i class="ri-file-copy-line"></i>
                             </button>
                         </div>
